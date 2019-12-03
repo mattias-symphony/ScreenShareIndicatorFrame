@@ -99,8 +99,9 @@ static LRESULT CALLBACK trackWindowWndProc( HWND hwnd, UINT message, WPARAM wpar
 		case WM_CLOSE: {
 			PostQuitMessage( 0 );
 		} break;
-		case WM_ERASEBKGND:
+		case WM_ERASEBKGND: {
 			return 0;
+        } break;
 		case WM_PAINT: {
 			RECT r;
 			GetClientRect( hwnd, &r );
@@ -177,7 +178,8 @@ static int trackWindow( HWND trackedWindow ) {
 
 
 struct FindScreenData {
-	int x, y;
+	int x;
+    int y;
 	BOOL found;
 	RECT bounds;
 };
@@ -189,7 +191,7 @@ static BOOL CALLBACK findScreen( HMONITOR monitor, HDC dc, LPRECT rect, LPARAM l
 	if( rect->left == findScreenData->x && rect->top == findScreenData->y ) {
 		findScreenData->found = TRUE;
 		findScreenData->bounds = *rect;
-		//return FALSE;
+		return FALSE;
 	}
 
 	return TRUE;
@@ -284,6 +286,9 @@ static int trackScreen( int x, int y ) {
 int app( int argc, char* argv[] ) {
 	if( argc == 2 ) {
 		HWND trackedWindow = (HWND)( (uintptr_t) atoll( argv[ 1 ] ) );
+		if( trackWindow == NULL ) {
+			return EXIT_FAILURE;
+		}
 		return trackWindow( trackedWindow );
 	} else if( argc == 3 ) {
 		return trackScreen( atoi( argv[ 1 ] ), atoi( argv[ 2 ] ) );
@@ -326,7 +331,7 @@ static int testWindow( char const* title ) {
 		title,
 		NULL
 	};
-    EnumWindows( findTestWindow, (LPARAM) &findTestWindowData );
+	EnumWindows( findTestWindow, (LPARAM) &findTestWindowData );
 	if( findTestWindowData.hwnd == NULL ) {
 		return EXIT_FAILURE;
 	}
@@ -347,9 +352,6 @@ static int testScreen( char* x, char* y ) {
 
 int main( int argc, char* argv[] ) {
 	EnumWindows( closeExistingInstance, 0 );
-
-	int test[ 10 ];
-	float* c = (void*) test;
 
 	if( argc >= 2 && strcmp( argv[ 1 ], "--test" ) == 0 ) {
 		if( argc == 2 ) {
