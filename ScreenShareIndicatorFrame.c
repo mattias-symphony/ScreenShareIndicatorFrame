@@ -179,7 +179,7 @@ static int trackWindow( HWND trackedWindow ) {
 
 struct FindScreenData {
 	int x;
-    int y;
+      int y;
 	BOOL found;
 	RECT bounds;
 };
