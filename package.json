@@ -1,0 +1,21 @@
+{
+  "name": "screen-share-indicator-frame",
+  "version": "0.0.0",
+  "description": "screen sharing indicator frame util for windows",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "preinstall": "npm run build",
+    "build": "cl ScreenShareIndicatorFrame.c /O2 /MT /nologo"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mattias-symphony/ScreenShareIndicatorFrame.git"
+  },
+  "author": "symphony",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/symphonyoss/ScreenShareIndicatorFrame/issues"
+  },
+  "homepage": "https://github.com/symphonyoss/ScreenShareIndicatorFrame#readme",
+  "os": "win32"
+}
