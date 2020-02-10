@@ -287,7 +287,7 @@ int main( int argc, char* argv[] ) {
         
         EnumDisplayMonitors( NULL, NULL, findScreen, (LPARAM) &findScreenData );
         if( findScreenData.found ) {
-            trackScreen( findScreenData.bounds );
+            return trackScreen( findScreenData.bounds );
         }
         
         
