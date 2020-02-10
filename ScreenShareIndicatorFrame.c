@@ -178,17 +178,24 @@ static int trackWindow( HWND trackedWindow ) {
 
 
 struct FindScreenData {
-	int x;
-      int y;
+	uint32_t hash;
 	BOOL found;
 	RECT bounds;
 };
+
+uint32_t SuperFastHash (const char * data, int len); // Definition at end of file
 
 
 static BOOL CALLBACK findScreen( HMONITOR monitor, HDC dc, LPRECT rect, LPARAM lparam ) {	
 	struct FindScreenData* findScreenData = (struct FindScreenData*) lparam;
 
-	if( rect->left == findScreenData->x && rect->top == findScreenData->y ) {
+    MONITORINFOEXA info;
+    info.cbSize = sizeof( info );
+    GetMonitorInfoA( monitor, (MONITORINFO*) &info );
+
+    uint32_t hash = SuperFastHash( info.szDevice, strlen( info.szDevice ) );
+
+    if( hash == findScreenData->hash ) {
 		findScreenData->found = TRUE;
 		findScreenData->bounds = *rect;
 		return FALSE;
@@ -224,16 +231,7 @@ static LRESULT CALLBACK trackScreenWndProc( HWND hwnd, UINT message, WPARAM wpar
 }
 
 
-static int trackScreen( int x, int y ) {
-	struct FindScreenData findScreenData = { 
-		x, y,
-		FALSE 
-	};
-	
-	EnumDisplayMonitors( NULL, NULL, findScreen, (LPARAM) &findScreenData );
-	if( !findScreenData.found ) {
-		return EXIT_FAILURE;
-	}
+static int trackScreen( RECT bounds ) {
 
     WNDCLASSA wc = { 
 		CS_OWNDC | CS_HREDRAW | CS_VREDRAW, 
@@ -251,9 +249,7 @@ static int trackScreen( int x, int y ) {
     RegisterClassA( &wc );
 
     HWND hwnd = CreateWindowExA( WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_TOPMOST, wc.lpszClassName, 
-		NULL, WS_VISIBLE,  findScreenData.bounds.left, findScreenData.bounds.top, 
-		findScreenData.bounds.right - findScreenData.bounds.left, 
-		findScreenData.bounds.bottom - findScreenData.bounds.top , NULL, NULL, 
+		NULL, WS_VISIBLE, bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top , NULL, NULL, 
 		GetModuleHandleA( NULL ), 0 );
 
 	COLORREF transparency_key = RGB( 0, 255, 255 );
@@ -283,86 +279,105 @@ static int trackScreen( int x, int y ) {
 }
 
 
-int app( int argc, char* argv[] ) {
+int main( int argc, char* argv[] ) {
+	EnumWindows( closeExistingInstance, 0 );
 	if( argc == 2 ) {
+        uint64_t arg = atoll( argv[ 1 ] );
+        struct FindScreenData findScreenData = { (uint32_t) arg, FALSE };
+        
+        EnumDisplayMonitors( NULL, NULL, findScreen, (LPARAM) &findScreenData );
+        if( findScreenData.found ) {
+            return trackScreen( findScreenData.bounds );
+        }
+        
+        
 		HWND trackedWindow = (HWND)( (uintptr_t) atoll( argv[ 1 ] ) );
 		if( trackWindow == NULL ) {
 			return EXIT_FAILURE;
 		}
 		return trackWindow( trackedWindow );
-	} else if( argc == 3 ) {
-		return trackScreen( atoi( argv[ 1 ] ), atoi( argv[ 2 ] ) );
 	}
 
 	return EXIT_FAILURE;
 }
 
 
-struct FindTestWindowData {
-	char const* title;
-	HWND hwnd;
-};
 
 
-static BOOL CALLBACK findTestWindow( HWND hwnd, LPARAM lparam ) {	
-	struct FindTestWindowData* findTestWindowData = (struct FindTestWindowData*) lparam;
-	int length = GetWindowTextLengthA( hwnd );
-	if( IsWindowVisible( hwnd ) && length > 0 ) {
 	
-		char* buffer = (char*) malloc( length + 1 );
-		if( !buffer ) {
-			return FALSE;
-		}
-		GetWindowTextA( hwnd, buffer, length + 1 );
-		BOOL isTestWindow = strstr( buffer, findTestWindowData->title ) != NULL;
-		free( buffer );
 		
-		if( isTestWindow ) {
-			findTestWindowData->hwnd = hwnd;
-			return FALSE;
+// Copyright (c) 2010, Paul Hsieh
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// * Redistributions of source code must retain the above copyright notice, this
+//   list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+// * Neither my name, Paul Hsieh, nor the names of any other contributors to the
+//   code use may not be used to endorse or promote products derived from this
+//   software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+#include <stdint.h>
+#include <stdlib.h>
+#undef get16bits
+#if (defined(__GNUC__) && defined(__i386__)) || defined(__WATCOMC__) \
+  || defined(_MSC_VER) || defined (__BORLANDC__) || defined (__TURBOC__)
+#define get16bits(d) (*((const uint16_t *) (d)))
+#endif
+#if !defined (get16bits)
+#define get16bits(d) ((((uint32_t)(((const uint8_t *)(d))[1])) << 8)\
+                       +(uint32_t)(((const uint8_t *)(d))[0]) )
+#endif
+uint32_t SuperFastHash (const char * data, int len) {
+uint32_t hash = len, tmp;
+int rem;
+    if (len <= 0 || data == NULL) return 0;
+    rem = len & 3;
+    len >>= 2;
+    /* Main loop */
+    for (;len > 0; len--) {
+        hash  += get16bits (data);
+        tmp    = (get16bits (data+2) << 11) ^ hash;
+        hash   = (hash << 16) ^ tmp;
+        data  += 2*sizeof (uint16_t);
+        hash  += hash >> 11;
 		}    
+    /* Handle end cases */
+    switch (rem) {
+        case 3: hash += get16bits (data);
+                hash ^= hash << 16;
+                hash ^= ((signed char)data[sizeof (uint16_t)]) << 18;
+                hash += hash >> 11;
+                break;
+        case 2: hash += get16bits (data);
+                hash ^= hash << 11;
+                hash += hash >> 17;
+                break;
+        case 1: hash += (signed char)*data;
+                hash ^= hash << 10;
+                hash += hash >> 1;
 	}
-	return TRUE;
-}
-
-
-static int testWindow( char const* title ) {
-	struct FindTestWindowData findTestWindowData = {
-		title,
-		NULL
-	};
-	EnumWindows( findTestWindow, (LPARAM) &findTestWindowData );
-	if( findTestWindowData.hwnd == NULL ) {
-		return EXIT_FAILURE;
-	}
-
-	char buffer[ 16 ];
-	sprintf_s( buffer, sizeof( buffer ), "%" PRIu64,(uint64_t) findTestWindowData.hwnd );
-
-	char* argv[] = { buffer, buffer };
-	return app( 2, argv );
-}
-
-
-static int testScreen( char* x, char* y ) {
-	char* argv[] = { x, x, y };
-	return app( 3, argv );
-}
-
-
-int main( int argc, char* argv[] ) {
-	EnumWindows( closeExistingInstance, 0 );
-
-	if( argc >= 2 && strcmp( argv[ 1 ], "--test" ) == 0 ) {
-		if( argc == 2 ) {
-			return testWindow( "test" );
-		} else if( argc == 3 ) {
-			return testWindow( argv[ 2 ] );
-		} else if( argc == 4 ) {
-			return testScreen( argv[ 2 ], argv[ 3 ] );
-		}	
-		return EXIT_FAILURE;
-	}
-
-    return app( argc, argv );
+    /* Force "avalanching" of final 127 bits */
+    hash ^= hash << 3;
+    hash += hash >> 5;
+    hash ^= hash << 4;
+    hash += hash >> 17;
+    hash ^= hash << 25;
+    hash += hash >> 6;
+    return hash;
 }
