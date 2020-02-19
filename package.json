@@ -21,5 +21,6 @@
   "bugs": {
     "url": "https://github.com/symphonyoss/ScreenShareIndicatorFrame/issues"
   },
-  "homepage": "https://github.com/symphonyoss/ScreenShareIndicatorFrame#readme"
+  "homepage": "https://github.com/symphonyoss/ScreenShareIndicatorFrame#readme",
+  "os": [ "win32", "darwin" ]
 }
