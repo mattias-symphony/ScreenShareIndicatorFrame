@@ -7,7 +7,7 @@
     "postinstall": "npm run build",
     "build": "run-script-os",
     "build:win32": "cl ScreenShareIndicatorFrame.c /O2 /MT /nologo",
-    "build:darwin": "clang SymphonyScreenShareIndicator.m -O2 -oSymphonyScreenShareIndicator -framework Cocoa"
+    "build:darwin": "clang SymphonyScreenShareIndicator.m -O2 -oSymphonyScreenShareIndicator -framework Cocoa -mmacosx-version-min=10.8"
   },
   "dependencies": {
     "run-script-os": "1.0.7"
