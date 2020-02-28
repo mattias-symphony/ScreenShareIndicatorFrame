@@ -1,6 +1,8 @@
 #import <Cocoa/Cocoa.h>
 #include <stdlib.h>
 
+int trackedWindowId;
+
 @interface View : NSView
 @end
 
@@ -29,6 +31,26 @@
     View* view = [[View alloc] initWithFrame:bounds];
     [super setContentView:view];
 }
+
+-(void)updateWindow {
+    NSRect windowRect;
+    CFArrayRef windowArray = CGWindowListCopyWindowInfo( kCGWindowListOptionOnScreenOnly, kCGNullWindowID );
+    NSMutableArray *windowsInMap = [NSMutableArray arrayWithCapacity:64];
+    NSArray*  windows = (NSArray*) CGWindowListCopyWindowInfo( kCGWindowListOptionOnScreenOnly, kCGNullWindowID );
+    NSUInteger count = [windows count];
+    for (NSUInteger i = 0; i < count; i++) {
+        NSDictionary*   nswindowsdescription = [windows objectAtIndex:i];
+        NSNumber* windowid = (NSNumber*)[nswindowsdescription objectForKey:@"kCGWindowNumber"];
+        if( [windowid intValue] == trackedWindowId ) {
+            CGRectMakeWithDictionaryRepresentation((CFDictionaryRef)[nswindowsdescription objectForKey:@"kCGWindowBounds"], &windowRect);
+            break;
+        }
+    }
+    CFRelease( windowArray );
+
+    windowRect.origin.y = [ NSScreen.screens[ 0 ] frame ].size.height - windowRect.origin.y - windowRect.size.height;   
+    [super setFrame:windowRect display: YES];
+}
 @end
 
 
@@ -43,11 +65,7 @@ void closeExistingInstances( void ) {
         NSNumber* windowid = (NSNumber*)[nswindowsdescription objectForKey:@"kCGWindowNumber"];
         NSString* ownerName = (NSString*)[nswindowsdescription objectForKey:@"kCGWindowOwnerName"];
         NSNumber* ownerPID = (NSNumber*)[nswindowsdescription objectForKey:@"kCGWindowOwnerPID"];
-        // if( windowid ) {
-        //     printf("%s:%s:%s\n", [ownerName UTF8String], [[windowid stringValue] UTF8String], [[ownerPID stringValue] UTF8String]);
-        // }
         if( [ownerName isEqualToString:processName] ) {
-            // printf("Killing %d\n", [ownerPID intValue]);
             kill( [ownerPID intValue], SIGKILL );
         }
     }
@@ -55,33 +73,48 @@ void closeExistingInstances( void ) {
 }
 
 
-int main( int argc, char** argv ) {
-    [NSAutoreleasePool new];
-
-    closeExistingInstances();
-
-    if( argc < 2 ) {
-        return EXIT_SUCCESS;
-    }
-
-    int displayId = atoi( argv[ 1 ] );
-
+int trackWindow( int displayId ) {
     NSRect windowRect;
-    bool found = false;
-    for( int i = 0; i < NSScreen.screens.count; ++i ) {
-        NSDictionary* screenDictionary = [NSScreen.screens[ i ] deviceDescription];
-        NSNumber* screenID = [screenDictionary objectForKey:@"NSScreenNumber"];
-        if( [screenID intValue] == displayId ) {
-            windowRect = NSScreen.screens[ i ].frame;
-            found = true;
-            break;
-        }
-    }
+    CFArrayRef windowArray = CGWindowListCopyWindowInfo( kCGWindowListOptionOnScreenOnly, kCGNullWindowID );
+    NSMutableArray *windowsInMap = [NSMutableArray arrayWithCapacity:64];
+    NSArray*  windows = (NSArray*) CGWindowListCopyWindowInfo( kCGWindowListOptionOnScreenOnly, kCGNullWindowID );
+    NSUInteger count = [windows count];
+    for (NSUInteger i = 0; i < count; i++) {
+        NSDictionary*   nswindowsdescription = [windows objectAtIndex:i];
+        NSNumber* windowid = (NSNumber*)[nswindowsdescription objectForKey:@"kCGWindowNumber"];
 
-    if( !found ) {
-        return EXIT_FAILURE;
+        if( [windowid intValue] == displayId ) {
+            CGRectMakeWithDictionaryRepresentation((CFDictionaryRef)[nswindowsdescription objectForKey:@"kCGWindowBounds"], &windowRect);
+            NSNumber* ownerPID = (NSNumber*)[nswindowsdescription objectForKey:@"kCGWindowOwnerPID"];
+            NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier: [ownerPID intValue] ];
+            [app activateWithOptions: NSApplicationActivateIgnoringOtherApps];
+         }
     }
+    CFRelease( windowArray );
 
+    windowRect.origin.y = [[NSScreen mainScreen] frame].size.height - windowRect.origin.y - windowRect.size.height;
+
+    [NSApplication sharedApplication];
+
+    trackedWindowId = displayId;
+
+    NSWindow* window = [[Window alloc] initWithContentRect:windowRect
+        styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO
+        screen:[NSScreen mainScreen]];
+    [NSTimer scheduledTimerWithTimeInterval:0.1 target:window selector:@selector(updateWindow) userInfo:nil repeats:YES];    
+    [window setReleasedWhenClosed:YES];
+    [window setLevel:CGShieldingWindowLevel()];
+    [window setOpaque:NO];
+    [window setBackgroundColor:[NSColor clearColor]];
+    [window setIgnoresMouseEvents:YES];
+    [window makeKeyAndOrderFront:nil];
+    [NSApp activateIgnoringOtherApps:YES];
+    [NSApp run];
+    return EXIT_SUCCESS;
+}
+
+
+int trackScreen( NSRect windowRect ) {
     [NSApplication sharedApplication];
 
     NSWindow* window = [[Window alloc] initWithContentRect:windowRect
@@ -96,4 +129,27 @@ int main( int argc, char** argv ) {
     [NSApp activateIgnoringOtherApps:YES];
     [NSApp run];
     return EXIT_SUCCESS;
+}
+
+int main( int argc, char** argv ) {
+    [NSAutoreleasePool new];
+    closeExistingInstances();
+
+    if( argc < 2 ) {
+        return EXIT_SUCCESS;
+    }
+
+    int displayId = atoi( argv[ 1 ] );
+
+    for( int i = 0; i < NSScreen.screens.count; ++i ) {
+        NSDictionary* screenDictionary = [NSScreen.screens[ i ] deviceDescription];
+        NSNumber* screenID = [screenDictionary objectForKey:@"NSScreenNumber"];
+        if( [screenID intValue] == displayId ) {
+            NSRect windowRect = NSScreen.screens[ i ].frame;
+            return trackScreen( windowRect );
+            break;
+        }
+    }
+
+    return trackWindow( displayId );
 }
