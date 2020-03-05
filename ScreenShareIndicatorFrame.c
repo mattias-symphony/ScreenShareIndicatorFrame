@@ -296,9 +296,11 @@ int main( int argc, char* argv[] ) {
 			return EXIT_FAILURE;
 		}
 		return trackWindow( trackedWindow );
-	}
+	} else if( argc > 2 ) {
+        return EXIT_FAILURE;
+    }
 
-	return EXIT_FAILURE;
+	return EXIT_SUCCESS;
 }
 
 
