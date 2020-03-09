@@ -48,6 +48,8 @@ int trackedWindowId;
     }
     CFRelease( windowArray );
 
+    [self orderWindow:NSWindowAbove relativeTo:trackedWindowId];
+
     windowRect.origin.y = [ NSScreen.screens[ 0 ] frame ].size.height - windowRect.origin.y - windowRect.size.height;   
     [super setFrame:windowRect display: YES];
 }
@@ -102,7 +104,6 @@ int trackWindow( int displayId ) {
         screen:NSScreen.screens[ 0 ]];
     [NSTimer scheduledTimerWithTimeInterval:0.1 target:window selector:@selector(updateWindow) userInfo:nil repeats:YES];    
     [window setReleasedWhenClosed:YES];
-    [window setLevel:CGShieldingWindowLevel()];
     [window setOpaque:NO];
     [window setBackgroundColor:[NSColor clearColor]];
     [window setIgnoresMouseEvents:YES];
