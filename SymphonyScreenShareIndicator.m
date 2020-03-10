@@ -48,6 +48,8 @@ int trackedWindowId;
     }
     CFRelease( windowArray );
 
+    [self orderWindow:NSWindowAbove relativeTo:trackedWindowId];
+
     windowRect.origin.y = [ NSScreen.screens[ 0 ] frame ].size.height - windowRect.origin.y - windowRect.size.height;   
     [super setFrame:windowRect display: YES];
 }
@@ -82,7 +84,6 @@ int trackWindow( int displayId ) {
     for (NSUInteger i = 0; i < count; i++) {
         NSDictionary*   nswindowsdescription = [windows objectAtIndex:i];
         NSNumber* windowid = (NSNumber*)[nswindowsdescription objectForKey:@"kCGWindowNumber"];
-
         if( [windowid intValue] == displayId ) {
             CGRectMakeWithDictionaryRepresentation((CFDictionaryRef)[nswindowsdescription objectForKey:@"kCGWindowBounds"], &windowRect);
             NSNumber* ownerPID = (NSNumber*)[nswindowsdescription objectForKey:@"kCGWindowOwnerPID"];
@@ -100,10 +101,9 @@ int trackWindow( int displayId ) {
 
     NSWindow* window = [[Window alloc] initWithContentRect:windowRect
         styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO
-        screen:[NSScreen mainScreen]];
+        screen:NSScreen.screens[ 0 ]];
     [NSTimer scheduledTimerWithTimeInterval:0.1 target:window selector:@selector(updateWindow) userInfo:nil repeats:YES];    
     [window setReleasedWhenClosed:YES];
-    [window setLevel:CGShieldingWindowLevel()];
     [window setOpaque:NO];
     [window setBackgroundColor:[NSColor clearColor]];
     [window setIgnoresMouseEvents:YES];
@@ -116,10 +116,9 @@ int trackWindow( int displayId ) {
 
 int trackScreen( NSRect windowRect ) {
     [NSApplication sharedApplication];
-
     NSWindow* window = [[Window alloc] initWithContentRect:windowRect
         styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO
-        screen:[NSScreen mainScreen]];
+        screen:NSScreen.screens[ 0 ] ];
     [window setReleasedWhenClosed:YES];
     [window setLevel:CGShieldingWindowLevel()];
     [window setOpaque:NO];
