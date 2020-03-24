@@ -121,6 +121,7 @@ int trackScreen( NSRect windowRect ) {
         screen:NSScreen.screens[ 0 ] ];
     [window setReleasedWhenClosed:YES];
     [window setLevel:CGShieldingWindowLevel()];
+    [window setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces];
     [window setOpaque:NO];
     [window setBackgroundColor:[NSColor clearColor]];
     [window setIgnoresMouseEvents:YES];
