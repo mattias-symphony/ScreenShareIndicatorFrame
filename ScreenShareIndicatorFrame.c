@@ -195,7 +195,8 @@ static BOOL CALLBACK findScreen( HMONITOR monitor, HDC dc, LPRECT rect, LPARAM l
 
     uint32_t hash = SuperFastHash( info.szDevice, strlen( info.szDevice ) );
 
-    if( hash == findScreenData->hash ) {
+    // If no hash is passed in (hash==0), pick the first screen we find
+    if( findScreenData->hash == 0 || hash == findScreenData->hash ) {
 		findScreenData->found = TRUE;
 		findScreenData->bounds = *rect;
 		return FALSE;
