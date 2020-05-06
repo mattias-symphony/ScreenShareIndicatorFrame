@@ -1,10 +1,12 @@
 #include <windows.h>
+#include <dwmapi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
 
 #pragma comment( lib, "user32.lib" )
 #pragma comment( lib, "gdi32.lib" )
+#pragma comment( lib, "dwmapi.lib" )
 
 #define WINDOW_CLASS_NAME "SymphonyScreenShareIndicator"
 #define IDLE_UPDATE_INTERVAL_MS 1000
@@ -58,7 +60,7 @@ static void CALLBACK trackWindowTimerProc( HWND hwnd, UINT message, UINT_PTR id,
 	struct WindowData* windowData = (struct WindowData*) GetWindowLongPtrA( hwnd, GWLP_USERDATA );
 	
 	RECT windowRect;
-	if( GetWindowRect( windowData->trackedWindow, &windowRect ) ) {
+	if( DwmGetWindowAttribute( windowData->trackedWindow, DWMWA_EXTENDED_FRAME_BOUNDS, &windowRect, sizeof( windowRect ) ) == S_OK ) {
 		if( EqualRect( &windowRect, &windowData->previousWindowRect ) ) {
 			windowData->activeTimeout -= ACTIVE_UPDATE_INTERVAL_MS;
 			if( windowData->activeTimeout <= 0 ) {
@@ -77,9 +79,6 @@ static void CALLBACK trackWindowTimerProc( HWND hwnd, UINT message, UINT_PTR id,
 			InflateRect( &trackingRect, -7, -8 );
 			trackingRect.top -= 1;
 			trackingRect.right -= 1;
-		} else {
-			InflateRect( &trackingRect, -6, -6 );
-			trackingRect.top -= 7;
 		}
 		SetWindowPos( hwnd, windowData->trackedWindow, trackingRect.left, trackingRect.top, 
 			trackingRect.right - trackingRect.left, trackingRect.bottom - trackingRect.top,  
