@@ -76,9 +76,11 @@ static void CALLBACK trackWindowTimerProc( HWND hwnd, UINT message, UINT_PTR id,
 		RECT trackingRect = windowRect;
 		WINDOWPLACEMENT wndpl = { sizeof( wndpl ) };
 		if( GetWindowPlacement( windowData->trackedWindow, &wndpl ) && wndpl.showCmd == SW_MAXIMIZE ) {
-			InflateRect( &trackingRect, -7, -8 );
-			trackingRect.top -= 1;
-			trackingRect.right -= 1;
+			HMONITOR monitor = MonitorFromWindow( windowData->trackedWindow, MONITOR_DEFAULTTONEAREST );
+			MONITORINFO info;
+			info.cbSize = sizeof( info );
+			GetMonitorInfoA( monitor, &info );
+			trackingRect = info.rcWork;
 		}
 		SetWindowPos( hwnd, windowData->trackedWindow, trackingRect.left, trackingRect.top, 
 			trackingRect.right - trackingRect.left, trackingRect.bottom - trackingRect.top,  
