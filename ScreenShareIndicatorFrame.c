@@ -282,6 +282,18 @@ static int trackScreen( RECT bounds ) {
 
 
 int main( int argc, char* argv[] ) {
+	// Dynamic binding of functions not available on win 7
+	HMODULE user32lib = LoadLibraryA( "user32.dll" );
+	if( user32lib ) {
+		BOOL (WINAPI *SetProcessDpiAwarenessContextPtr) ( DPI_AWARENESS_CONTEXT ) = (BOOL(WINAPI*)(DPI_AWARENESS_CONTEXT)) GetProcAddress( user32lib, "SetProcessDpiAwarenessContext" );
+
+		if( SetProcessDpiAwarenessContextPtr ) {
+			SetProcessDpiAwarenessContextPtr( DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2  );
+		}
+
+		FreeLibrary( user32lib );
+	}
+
 	EnumWindows( closeExistingInstance, 0 );
 	if( argc == 2 ) {
         uint64_t arg = atoll( argv[ 1 ] );
